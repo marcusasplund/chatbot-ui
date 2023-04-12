@@ -1,97 +1,125 @@
-import { Conversation, KeyValuePair } from "@/types";
-import { IconArrowBarLeft, IconPlus } from "@tabler/icons-react";
-import { FC, useEffect, useState } from "react";
-import { Conversations } from "./Conversations";
-import { Search } from "./Search";
-import { SidebarSettings } from "./SidebarSettings";
+import { IconFolderPlus, IconMistOff, IconPlus } from '@tabler/icons-react';
+import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
-interface Props {
-  loading: boolean;
-  conversations: Conversation[];
-  lightMode: "light" | "dark";
-  selectedConversation: Conversation;
-  apiKey: string;
-  onNewConversation: () => void;
-  onToggleLightMode: (mode: "light" | "dark") => void;
-  onSelectConversation: (conversation: Conversation) => void;
-  onDeleteConversation: (conversation: Conversation) => void;
-  onToggleSidebar: () => void;
-  onUpdateConversation: (conversation: Conversation, data: KeyValuePair) => void;
-  onApiKeyChange: (apiKey: string) => void;
-  onClearConversations: () => void;
-  onExportConversations: () => void;
-  onImportConversations: (conversations: Conversation[]) => void;
+import {
+  CloseSidebarButton,
+  OpenSidebarButton,
+} from './components/OpenCloseButton';
+
+import Search from '../Search';
+
+interface Props<T> {
+  isOpen: boolean;
+  addItemButtonTitle: string;
+  side: 'left' | 'right';
+  items: T[];
+  itemComponent: ReactNode;
+  folderComponent: ReactNode;
+  footerComponent?: ReactNode;
+  searchTerm: string;
+  handleSearchTerm: (searchTerm: string) => void;
+  toggleOpen: () => void;
+  handleCreateItem: () => void;
+  handleCreateFolder: () => void;
+  handleDrop: (e: any) => void;
 }
 
-export const Sidebar: FC<Props> = ({ loading, conversations, lightMode, selectedConversation, apiKey, onNewConversation, onToggleLightMode, onSelectConversation, onDeleteConversation, onToggleSidebar, onUpdateConversation, onApiKeyChange, onClearConversations, onExportConversations, onImportConversations }) => {
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [filteredConversations, setFilteredConversations] = useState<Conversation[]>(conversations);
+const Sidebar = <T,>({
+  isOpen,
+  addItemButtonTitle,
+  side,
+  items,
+  itemComponent,
+  folderComponent,
+  footerComponent,
+  searchTerm,
+  handleSearchTerm,
+  toggleOpen,
+  handleCreateItem,
+  handleCreateFolder,
+  handleDrop,
+}: Props<T>) => {
+  const { t } = useTranslation('promptbar');
 
-  useEffect(() => {
-    if (searchTerm) {
-      setFilteredConversations(conversations.filter((conversation) => conversation.name.toLowerCase().includes(searchTerm.toLowerCase())));
-    } else {
-      setFilteredConversations(conversations);
-    }
-  }, [searchTerm, conversations]);
+  const allowDrop = (e: any) => {
+    e.preventDefault();
+  };
 
-  return (
-    <div className={`h-full flex flex-none space-y-2 p-2 flex-col bg-[#202123] w-[260px] z-10 sm:relative sm:top-0 absolute top-12 bottom-0`}>
-      <div className="flex items-center">
-        <button
-          className="flex gap-3 p-3 items-center w-full sm:w-[200px] rounded-md hover:bg-gray-500/10 transition-colors duration-200 text-white cursor-pointer text-sm flex-shrink-0 border border-white/20"
-          onClick={() => {
-            onNewConversation();
-            setSearchTerm("");
-          }}
-        >
-          <IconPlus
-            className=""
-            size={16}
+  const highlightDrop = (e: any) => {
+    e.target.style.background = '#343541';
+  };
+
+  const removeHighlight = (e: any) => {
+    e.target.style.background = 'none';
+  };
+
+  return isOpen ? (
+    <div>
+      <div
+        className={`fixed top-0  z-50 flex h-full w-[260px] flex-none flex-col space-y-2 bg-[#202123] p-2 text-[14px] transition-all sm:relative sm:top-0`}
+      >
+        <div className="flex items-center">
+          <button
+            className="text-sidebar flex w-[190px] flex-shrink-0 cursor-pointer select-none items-center gap-3 rounded-md border border-white/20 p-3 text-white transition-colors duration-200 hover:bg-gray-500/10"
+            onClick={() => {
+              handleCreateItem();
+              handleSearchTerm('');
+            }}
+          >
+            <IconPlus size={16} />
+            {addItemButtonTitle}
+          </button>
+
+          <button
+            className="ml-2 flex flex-shrink-0 cursor-pointer items-center gap-3 rounded-md border border-white/20 p-3 text-sm text-white transition-colors duration-200 hover:bg-gray-500/10"
+            onClick={handleCreateFolder}
+          >
+            <IconFolderPlus size={16} />
+          </button>
+        </div>
+        {items?.length > 0 && (
+          <Search
+            placeholder={t('Search prompts...') || ''}
+            searchTerm={searchTerm}
+            onSearch={handleSearchTerm}
           />
-          New chat
-        </button>
+        )}
 
-        <IconArrowBarLeft
-          className="ml-1 p-1 text-neutral-300 cursor-pointer hover:text-neutral-400 hidden sm:flex"
-          size={32}
-          onClick={onToggleSidebar}
-        />
+        <div className="flex-grow overflow-auto">
+          {items?.length > 0 && (
+            <div className="flex border-b border-white/20 pb-2">
+              {folderComponent}
+            </div>
+          )}
+
+          {items?.length > 0 ? (
+            <div
+              className="pt-2"
+              onDrop={handleDrop}
+              onDragOver={allowDrop}
+              onDragEnter={highlightDrop}
+              onDragLeave={removeHighlight}
+            >
+              {itemComponent}
+            </div>
+          ) : (
+            <div className="mt-8 select-none text-center text-white opacity-50">
+              <IconMistOff className="mx-auto mb-3" />
+              <span className="text-[14px] leading-normal">
+                {t('No prompts.')}
+              </span>
+            </div>
+          )}
+        </div>
+        {footerComponent}
       </div>
 
-      {conversations.length > 1 && (
-        <Search
-          searchTerm={searchTerm}
-          onSearch={setSearchTerm}
-        />
-      )}
-
-      <div className="flex-grow overflow-auto">
-        <Conversations
-          loading={loading}
-          conversations={filteredConversations}
-          selectedConversation={selectedConversation}
-          onSelectConversation={onSelectConversation}
-          onDeleteConversation={(conversation) => {
-            onDeleteConversation(conversation);
-            setSearchTerm("");
-          }}
-          onRenameConversation={(conversation, name) => {
-            onUpdateConversation(conversation, { key: "name", value: name });
-            setSearchTerm("");
-          }}
-        />
-      </div>
-
-      <SidebarSettings
-        lightMode={lightMode}
-        apiKey={apiKey}
-        onToggleLightMode={onToggleLightMode}
-        onApiKeyChange={onApiKeyChange}
-        onClearConversations={onClearConversations}
-        onExportConversations={onExportConversations}
-        onImportConversations={onImportConversations}
-      />
+      <CloseSidebarButton onClick={toggleOpen} side={side} />
     </div>
+  ) : (
+    <OpenSidebarButton onClick={toggleOpen} side={side} />
   );
 };
+
+export default Sidebar;
